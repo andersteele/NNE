@@ -46,21 +46,19 @@ def parse_data_1D(path, T = 256):
     for i in range(M):
         out[i,0,:,:]=raw[delta*i:delta*(i+1),:].transpose()
     return out
-def create_train_list(dirs = 'train_1/', no_files=100, seg_size=256):
-    #dir specifies patient
-    #batch_size is number of files to process at a time
-    #length is the size of
-    train_list=[]
-    file_list=glob.glob(dirs+'*.mat')
-    raw_0 = loadmat(file_list[0])['dataStruct']['data'][0,0].transpose()
-    M=int(raw_0.shape[1]/seg_size)
-    x = np.empty((1,16,seg_size))
-    for paths in [file_list[i] for i in range(no_files)]:
-        #add safety checking
-        raw = loadmat(paths)['dataStruct']['data'][0,0].transpose()
-        y = int((paths.split('/')[1]).split('.')[0].split('_')[2])
-        for j in range(M):
-            x[0,:,:]=raw[:,j*seg_size:(j+1)*seg_size]
-            train_list.append((x,y))
-    random.shuffle(train_list)
-    return train_list
+
+def data_gen(path_list, n = 1):
+    #Parses files in list (n at a time), mixing he samples
+    M=len(path_list)-n-1
+    while True:
+        i=random.randint(0,M)
+        train_out=[]
+        x_out=parse_data_1D(path_list[i])
+        y_out=np.ones(x_out.shape[0])*int((path_list[i].split('/')[1]).split('.')[0].split('_')[2])
+        for paths in path_list[i+1:i+n]:
+            temp_x=parse_data_1D(paths)
+            x_out=np.vstack([x_out,temp_x])
+            y_out=np.hstack([y_out,[int((paths.split('/')[1]).split('.')[0].split('_')[2])]*len(temp_x)])
+        p = np.random.permutation(x_out.shape[0])
+        yield(np.take(x_out,p,axis=0),y_out[p])
+                 
